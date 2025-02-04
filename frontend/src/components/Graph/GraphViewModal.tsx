@@ -114,7 +114,7 @@ const GraphViewModal: React.FunctionComponent<GraphViewModalProps> = ({
         viewPoint === graphLabels.showGraphView
           ? await graphQueryAPI(
               graphQuery,
-              selectedRows?.map((f) => f.name)
+              selectedRows?.map((f) => f)
             )
           : await graphQueryAPI(graphQuery, [inspectedName ?? '']);
       return nodeRelationshipData;

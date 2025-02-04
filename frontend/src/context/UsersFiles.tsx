@@ -14,7 +14,7 @@ const FileContext = createContext<FileContextType | undefined>(undefined);
 
 const FileContextProvider: FC<FileContextProviderProps> = ({ children }) => {
   const isProdEnv = process.env.VITE_ENV === 'PROD';
-  console.log(process.env.VITE_ENV, "ssssssssssssssss")
+  console.log(process.env.VITE_ENV, 'ssssssssssssssss');
   const selectedNodeLabelstr = localStorage.getItem('selectedNodeLabels');
   const selectedNodeRelsstr = localStorage.getItem('selectedRelationshipLabels');
   const persistedQueue = localStorage.getItem('waitingQueue');

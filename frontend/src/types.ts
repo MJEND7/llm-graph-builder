@@ -37,7 +37,7 @@ export interface CustomFileBase extends Partial<globalThis.File> {
   communityRelCount: number;
   createdAt?: Date;
 }
-export interface CustomFile  {
+export interface CustomFile extends CustomFileBase {
   id: string;
 }
 
@@ -71,7 +71,7 @@ export interface SourceNode extends Omit<CustomFileBase, 'relationshipsCount' | 
   createdAt: filedate;
 }
 
-export type ExtractParams = CustomFile & {
+export type ExtractParams = Pick<CustomFile, 'wikiQuery' | 'model' | 'sourceUrl' | 'language' | 'accessToken'> & {
   file?: File;
   aws_access_key_id?: string | null;
   aws_secret_access_key?: string | null;
@@ -263,7 +263,7 @@ export interface GraphViewModalProps {
   viewPoint: string;
   nodeValues?: ExtendedNode[];
   relationshipValues?: ExtendedRelationship[];
-  selectedRows?: CustomFile[] | undefined;
+  selectedRows?: string[] | undefined;
 }
 
 export type GraphType = 'Entities' | 'DocumentChunk' | 'Communities';

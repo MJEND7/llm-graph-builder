@@ -360,7 +360,7 @@ async def processing_source(uri, userName, password, database, model, file_name,
       uri_latency["update_source_node"] = f'{elapsed_update_source_node:.2f}'
 
       logging.info('Update the status as Processing')
-      update_graph_chunk_processed = int(os.environ.get('UPDATE_GRAPH_CHUNKS_PROCESSED'))
+      update_graph_chunk_processed = int(os.environ.get('UPDATE_GRAPH_CHUNKS_PROCESSED') or 20)
       # selected_chunks = []
       is_cancelled_status = False
       job_status = "Completed"

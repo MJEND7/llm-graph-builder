@@ -37,7 +37,7 @@ export interface CustomFileBase extends Partial<globalThis.File> {
   communityRelCount: number;
   createdAt?: Date;
 }
-export interface CustomFile extends CustomFileBase {
+export interface CustomFile  {
   id: string;
 }
 
@@ -71,7 +71,7 @@ export interface SourceNode extends Omit<CustomFileBase, 'relationshipsCount' | 
   createdAt: filedate;
 }
 
-export type ExtractParams = Pick<CustomFile, 'wikiQuery' | 'model' | 'sourceUrl' | 'language' | 'accessToken'> & {
+export type ExtractParams = CustomFile & {
   file?: File;
   aws_access_key_id?: string | null;
   aws_secret_access_key?: string | null;

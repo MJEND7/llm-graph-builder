@@ -1,5 +1,15 @@
-import { Banner, Flex, IconButtonArray, LoadingSpinner, useDebounceValue } from '@neo4j-ndl/react';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { LoadingSpinner, useDebounceValue } from '@neo4j-ndl/react';
+import { InteractiveNvlWrapper } from '@neo4j-nvl/react';
+import NVL from '@neo4j-nvl/base';
+import type { Node, Relationship } from '@neo4j-nvl/base';
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import {
+    RotateCw,
+    ZoomIn,
+    ZoomOut,
+    Maximize2,
+} from 'lucide-react';
 import {
     BasicNode,
     BasicRelationship,
@@ -10,27 +20,14 @@ import {
     GraphViewModalProps,
     Scheme,
 } from '../../types';
-import { InteractiveNvlWrapper } from '@neo4j-nvl/react';
-import NVL from '@neo4j-nvl/base';
-import type { Node, Relationship } from '@neo4j-nvl/base';
-import {
-    ArrowPathIconOutline,
-    FitToScreenIcon,
-    MagnifyingGlassMinusIconOutline,
-    MagnifyingGlassPlusIconOutline,
-} from '@neo4j-ndl/react/icons';
-import { IconButtonWithToolTip } from '../UI/IconButtonToolTip';
 import { filterData, graphTypeFromNodes, processGraphData } from '../../utils/Utils';
-import { useCredentials } from '../../context/UserCredentials';
 import { graphQueryAPI } from '../../services/GraphQuery';
 import { graphLabels, nvlOptions, queryMap } from '../../utils/Constants';
 import ResultOverview from './ResultOverview';
-import { ResizePanelDetails } from './ResizePanel';
 import GraphPropertiesPanel from './GraphPropertiesPanel';
 import TableView from './TabelViw';
-import { TabsList, TabsTrigger, Tabs } from '../ui/tabs';
 
-const GraphViewModal: React.FunctionComponent<GraphViewModalProps> = ({
+const GraphViewModal: React.FC<GraphViewModalProps> = ({
     open,
     inspectedName,
     viewPoint,
@@ -46,7 +43,6 @@ const GraphViewModal: React.FunctionComponent<GraphViewModalProps> = ({
     const [loading, setLoading] = useState<boolean>(false);
     const [status, setStatus] = useState<'unknown' | 'success' | 'danger'>('unknown');
     const [statusMessage, setStatusMessage] = useState<string>('');
-    const { userCredentials } = useCredentials();
     const [scheme, setScheme] = useState<Scheme>({});
     const [newScheme, setNewScheme] = useState<Scheme>({});
     const [searchQuery, setSearchQuery] = useState('');
@@ -55,12 +51,15 @@ const GraphViewModal: React.FunctionComponent<GraphViewModalProps> = ({
     const [disableRefresh, setDisableRefresh] = useState<boolean>(false);
     const [selected, setSelected] = useState<{ type: EntityType; id: string } | undefined>(undefined);
     const [mode, setMode] = useState<boolean>(false);
+    const [isInit, setInit] = useState<boolean>(true);
     const [isTableView, setIsTableView] = useState(false);
-    const [_, setActiveTab] = useState<GraphType>('DocumentChunk'); // Default tab
+    const [allInitNodes, setAllInitNodes] = useState<ExtendedNode[]>([]);
+    const [allInitRelationships, setAllInitRelationships] = useState<Relationship[]>([]);
+    const [_, setActiveTab] = useState<GraphType>('DocumentChunk');
 
-    const graphQuery: string = queryMap.Entities
+    const graphQuery: string = queryMap.DocChunkEntities;
 
-    // fit graph to original position
+    // Zoom to fit function
     const handleZoomToFit = () => {
         nvlRef.current?.fit(
             allNodes.map((node) => node.id),
@@ -68,7 +67,7 @@ const GraphViewModal: React.FunctionComponent<GraphViewModalProps> = ({
         );
     };
 
-    // Unmounting the component
+    // Cleanup on unmount
     useEffect(() => {
         const timeoutId = setTimeout(() => {
             handleZoomToFit();
@@ -89,43 +88,43 @@ const GraphViewModal: React.FunctionComponent<GraphViewModalProps> = ({
         };
     }, []);
 
+    // Update graph type based on nodes
     useEffect(() => {
-        let updateGraphType;
-        if (mode) {
-            updateGraphType = graphTypeFromNodes(nodes);
-        } else {
-            updateGraphType = graphTypeFromNodes(allNodes);
-        }
+        const updateGraphType = mode
+            ? graphTypeFromNodes(nodes)
+            : graphTypeFromNodes(allNodes);
+
         if (Array.isArray(updateGraphType)) {
             setGraphType(updateGraphType);
         }
-    }, [allNodes]);
+    }, [allNodes, mode, nodes]);
 
+    // Fetch data from API
     const fetchData = useCallback(async () => {
         try {
-            const nodeRelationshipData =
-                viewPoint === graphLabels.showGraphView
-                    ? await graphQueryAPI(
-                        graphQuery,
-                        selectedRows?.map((f) => f)
-                    )
-                    : await graphQueryAPI(graphQuery, [inspectedName ?? '']);
-            return nodeRelationshipData;
-        } catch (error: any) {
-            console.log(error);
+            console.log(graphQuery)
+            return viewPoint === graphLabels.showGraphView
+                ? await graphQueryAPI(graphQuery, selectedRows?.map((f) => f))
+                : await graphQueryAPI(graphQuery, [inspectedName ?? '']);
+        } catch (error) {
+            console.error(error);
+            return null;
         }
-    }, [viewPoint, selectedRows, graphQuery, inspectedName, userCredentials]);
+    }, [viewPoint, selectedRows, graphQuery, inspectedName]);
 
-    // Api call to get the nodes and relations
+    // Graph API call
     const graphApi = async (mode?: string) => {
         try {
             const result = await fetchData();
-            if (result && result.data.data.nodes.length > 0) {
-                const neoNodes = result.data.data.nodes;
+            if (result?.data.data.nodes.length > 0) {
+                const neoNodes = result?.data.data.nodes;
                 const nodeIds = new Set(neoNodes.map((node: any) => node.element_id));
-                const neoRels = result.data.data.relationships
-                    .map((f: Relationship) => f)
-                    .filter((rel: any) => nodeIds.has(rel.end_node_element_id) && nodeIds.has(rel.start_node_element_id));
+                const neoRels = result?.data.data.relationships
+                    .filter((rel: any) =>
+                        nodeIds.has(rel.end_node_element_id) &&
+                        nodeIds.has(rel.start_node_element_id)
+                    );
+
                 const { finalNodes, finalRels, schemeVal } = processGraphData(neoNodes, neoRels);
 
                 if (mode === 'refreshMode') {
@@ -134,12 +133,18 @@ const GraphViewModal: React.FunctionComponent<GraphViewModalProps> = ({
                     setNodes(finalNodes);
                     setRelationships(finalRels);
                     setNewScheme(schemeVal);
-                    setLoading(false);
+                }
+
+                if (isInit) {
+                    setInit(false)
+                    setAllInitNodes(finalNodes);
+                    setAllInitRelationships(finalRels);
                 }
                 setAllNodes(finalNodes);
                 setAllRelationships(finalRels);
                 setScheme(schemeVal);
                 setDisableRefresh(false);
+                setLoading(false);
             } else {
                 setLoading(false);
                 setStatus('danger');
@@ -152,14 +157,19 @@ const GraphViewModal: React.FunctionComponent<GraphViewModalProps> = ({
         }
     };
 
+    // Initialize on open
     useEffect(() => {
         if (open) {
             setLoading(true);
             setGraphType([]);
+
             if (viewPoint !== graphLabels.chatInfoView) {
                 graphApi();
             } else {
-                const { finalNodes, finalRels, schemeVal } = processGraphData(nodeValues ?? [], relationshipValues ?? []);
+                const { finalNodes, finalRels, schemeVal } = processGraphData(
+                    nodeValues ?? [],
+                    relationshipValues ?? []
+                );
                 setAllNodes(finalNodes);
                 setAllRelationships(finalRels);
                 setScheme(schemeVal);
@@ -171,12 +181,14 @@ const GraphViewModal: React.FunctionComponent<GraphViewModalProps> = ({
         }
     }, [open]);
 
+    // Handle search
     useEffect(() => {
         if (debouncedQuery) {
             handleSearch(debouncedQuery);
         }
     }, [debouncedQuery]);
 
+    // Initialize graph with filtered data
     const initGraph = (
         graphType: GraphType[],
         finalNodes: ExtendedNode[],
@@ -186,8 +198,8 @@ const GraphViewModal: React.FunctionComponent<GraphViewModalProps> = ({
         if (allNodes.length > 0 && allRelationships.length > 0) {
             const { filteredNodes, filteredRelations, filteredScheme } = filterData(
                 graphType,
-                finalNodes ?? [],
-                finalRels ?? [],
+                finalNodes,
+                finalRels,
                 schemeVal
             );
             setNodes(filteredNodes);
@@ -196,17 +208,15 @@ const GraphViewModal: React.FunctionComponent<GraphViewModalProps> = ({
         }
     };
 
+    // Get selected item
     const selectedItem = useMemo(() => {
-        if (selected === undefined) {
-            return undefined;
-        }
-        if (selected.type === 'node') {
-            return nodes.find((node) => node.id === selected.id);
-        }
-        return relationships.find((relationship) => relationship.id === selected.id);
+        if (!selected) return undefined;
+        return selected.type === 'node'
+            ? nodes.find((node) => node.id === selected.id)
+            : relationships.find((rel) => rel.id === selected.id);
     }, [selected, relationships, nodes]);
 
-    // The search and update nodes
+    // Search handler
     const handleSearch = useCallback(
         (value: string) => {
             const query = value.toLowerCase();
@@ -238,29 +248,36 @@ const GraphViewModal: React.FunctionComponent<GraphViewModalProps> = ({
         },
         [nodes, relationships]
     );
-
-    // Unmounting the component
-    if (!open) {
-        return <></>;
-    }
+    if (!open) return null;
 
     const checkBoxView = viewPoint !== graphLabels.chatInfoView;
 
-    // the tab selection
+    // Tab change handler
     const handleTabChange = (tab: GraphType) => {
-        setIsTableView(tab == "Tables")
+        setIsTableView(tab === "Tables");
         setActiveTab(tab);
         setSearchQuery('');
         setSelected(undefined);
-        if (tab == "Tables") return
+
+        if (tab === "Tables") {
+            console.log(allInitNodes)
+            setNodes(allInitNodes)
+            setRelationships(allInitRelationships);
+            return
+        };
+
+        setNodes([])
+        setRelationships([]);
         initGraph([tab], allNodes, allRelationships, scheme);
         setGraphType([tab]);
-        if (nvlRef.current && nvlRef?.current?.getScale() > 1) {
+
+        let scale = nvlRef.current?.getScale() || 0;
+        if (scale > 1) {
             handleZoomToFit();
         }
     };
 
-    // Callback
+    // NVL callbacks
     const nvlCallbacks = {
         onLayoutComputing(isComputing: boolean) {
             if (!isComputing) {
@@ -269,142 +286,166 @@ const GraphViewModal: React.FunctionComponent<GraphViewModalProps> = ({
         },
     };
 
-    // To handle the current zoom in function of graph
-    const handleZoomIn = () => {
-        nvlRef.current?.setZoom(nvlRef.current.getScale() * 1.3);
-    };
+    // Zoom handlers
+    const handleZoomIn = () => nvlRef.current?.setZoom(nvlRef.current.getScale() * 1.3);
+    const handleZoomOut = () => nvlRef.current?.setZoom(nvlRef.current.getScale() * 0.7);
 
-    // To handle the current zoom out function of graph
-    const handleZoomOut = () => {
-        nvlRef.current?.setZoom(nvlRef.current.getScale() * 0.7);
-    };
-
-    // Refresh the graph with nodes and relations if file is processing
+    // Refresh handler
     const handleRefresh = () => {
         setDisableRefresh(true);
         setMode(true);
         graphApi('refreshMode');
     };
 
+    // Mouse event callbacks
     const mouseEventCallbacks = {
-        onNodeClick: (clickedNode: Node) => {
-            setSelected({ type: 'node', id: clickedNode.id });
-        },
-        onRelationshipClick: (clickedRelationship: Relationship) => {
-            setSelected({ type: 'relationship', id: clickedRelationship.id });
-        },
-        onCanvasClick: () => {
-            setSelected(undefined);
-        },
+        onNodeClick: (clickedNode: Node) => setSelected({ type: 'node', id: clickedNode.id }),
+        onRelationshipClick: (clickedRel: Relationship) => setSelected({ type: 'relationship', id: clickedRel.id }),
+        onCanvasClick: () => setSelected(undefined),
         onPan: true,
         onZoom: true,
         onDrag: true,
     };
-    return (
-        <>
-            <div className='bg-white relative w-full h-full max-h-full'>
-                {loading ? (
-                    <div className='my-40 flex items-center justify-center'>
-                        <LoadingSpinner size='large' />
-                    </div>
-                ) : status !== 'unknown' ? (
-                    <div className='my-40 flex items-center justify-center'>
-                        <Banner name='graph banner' description={statusMessage} type={status} usage='inline' />
-                    </div>
-                ) : nodes.length === 0 && relationships.length === 0 && graphType.length !== 0 ? (
-                    <div className='my-40 flex items-center justify-center'>
-                        <Banner name='graph banner' description={graphLabels.noNodesRels} type='danger' usage='inline' />
-                    </div>
-                ) : graphType.length === 0 && checkBoxView ? (
-                    <div className='my-40 flex items-center justify-center'>
-                        <Banner name='graph banner' description={graphLabels.selectCheckbox} type='danger' usage='inline' />
-                    </div>
-                ) : (
-                    <>
-                        <div className='flex' style={{ height: '100%' }}>
-                            <div className='bg-palette-neutral-bg-default relative' style={{ width: '100%', flex: '1' }}>
-                                <Flex className='p-5 w-full' alignItems='center' flexDirection='row' gap="4">
-                                    {checkBoxView && (
-                                        <>
-                                            <Tabs defaultValue="DocumentChunk" onValueChange={(value:any) => handleTabChange(value as GraphType)}>
-                                                <TabsList>
-                                                    <TabsTrigger value="DocumentChunk">Document Chunk</TabsTrigger>
-                                                    <TabsTrigger value="Entities">Entities</TabsTrigger>
-                                                    <TabsTrigger value="Tables">Tables</TabsTrigger>
-                                                </TabsList>
-                                            </Tabs>
-                                        </>
-                                    )}
-                                </Flex>
 
-                                {isTableView ? (
-                                    <TableView nodes={nodes} relationships={relationships} />
-                                ) : (
-                                    <>
-                                        <InteractiveNvlWrapper
-                                            nodes={nodes}
-                                            rels={relationships}
-                                            nvlOptions={nvlOptions}
-                                            ref={nvlRef}
-                                            mouseEventCallbacks={{ ...mouseEventCallbacks }}
-                                            interactionOptions={{
-                                                selectOnClick: true,
-                                            }}
-                                            nvlCallbacks={nvlCallbacks}
-                                        />
-                                        <IconButtonArray orientation='vertical' isFloating={true} className='absolute bottom-4 right-4'>
-                                            {viewPoint !== 'chatInfoView' && (
-                                                <IconButtonWithToolTip
-                                                    label='Refresh'
-                                                    text='Refresh graph'
-                                                    onClick={handleRefresh}
-                                                    placement='left'
-                                                    disabled={disableRefresh}
-                                                >
-                                                    <ArrowPathIconOutline className='n-size-token-7' />
-                                                </IconButtonWithToolTip>
-                                            )}
-                                            <IconButtonWithToolTip label='Zoomin' text='Zoom in' onClick={handleZoomIn} placement='left'>
-                                                <MagnifyingGlassPlusIconOutline className='n-size-token-7' />
-                                            </IconButtonWithToolTip>
-                                            <IconButtonWithToolTip label='Zoom out' text='Zoom out' onClick={handleZoomOut} placement='left'>
-                                                <MagnifyingGlassMinusIconOutline className='n-size-token-7' />
-                                            </IconButtonWithToolTip>
-                                            <IconButtonWithToolTip
-                                                label='Zoom to fit'
-                                                text='Zoom to fit'
-                                                onClick={handleZoomToFit}
-                                                placement='left'
-                                            >
-                                                <FitToScreenIcon className='n-size-token-7' />
-                                            </IconButtonWithToolTip>
-                                        </IconButtonArray>
-                                    </>
-                                )}
+    return (
+        <div className="w-full h-full bg-[#141414] bg-gradient-to-br from-[#141414] via-[#1A1A1A] to-[#141414] shadow-[inset_0_0_4px_rgba(255,255,255,0.15)]">
+            {loading ? (
+                <div className="flex items-center justify-center h-full bg-[#0A0A0A]">
+                    <LoadingSpinner size="large" className="text-gray-400" />
+                </div>
+            ) : status !== 'unknown' ? (
+                <div className="flex items-center justify-center h-full bg-[#0A0A0A]">
+                    <div className="bg-[#141414] px-6 py-4 rounded-lg border border-[#262626]">
+                        <p className="text-gray-300">{statusMessage}</p>
+                    </div>
+                </div>
+            ) : nodes.length === 0 && relationships.length === 0 && graphType.length !== 0 ? (
+                <div className="flex items-center justify-center h-full bg-[#0A0A0A]">
+                    <div className="bg-[#141414] px-6 py-4 rounded-lg border border-[#262626]">
+                        <p className="text-gray-300">{graphLabels.noNodesRels}</p>
+                    </div>
+                </div>
+            ) : graphType.length === 0 && checkBoxView ? (
+                <div className="flex items-center justify-center h-full bg-[#0A0A0A]">
+                    <div className="bg-[#141414] px-6 py-4 rounded-lg border border-[#262626]">
+                        <p className="text-gray-300">{graphLabels.selectCheckbox}</p>
+                    </div>
+                </div>
+            ) : (
+                <div className="flex flex-col h-full">
+                    <div className="flex justify-between items-center p-4 bg-[#141414] border-b border-[#262626]">
+                        {checkBoxView && (
+                            <Tabs
+                                defaultValue="DocumentChunk"
+                                className="w-full"
+                                onValueChange={(value) => handleTabChange(value as GraphType)}
+                            >
+                                <TabsList className="bg-[#0A0A0A] rounded-lg border border-[#262626]">
+                                    <TabsTrigger
+                                        value="DocumentChunk"
+                                        className="px-4 py-2 text-sm text-gray-400 data-[state=active]:bg-[#262626] data-[state=active]:text-white rounded-md transition-all"
+                                    >
+                                        Document Chunk
+                                    </TabsTrigger>
+                                    <TabsTrigger
+                                        value="Entities"
+                                        className="px-4 py-2 text-sm text-gray-400 data-[state=active]:bg-[#262626] data-[state=active]:text-white rounded-md transition-all"
+                                    >
+                                        Entities
+                                    </TabsTrigger>
+                                    <TabsTrigger
+                                        value="Tables"
+                                        className="px-4 py-2 text-sm text-gray-400 data-[state=active]:bg-[#262626] data-[state=active]:text-white rounded-md transition-all"
+                                    >
+                                        Tables
+                                    </TabsTrigger>
+                                </TabsList>
+                            </Tabs>
+                        )}
+
+                    </div>
+
+                    <div className="flex-1 relative bg-[#141414] bg-gradient-to-br from-[#141414] via-[#1A1A1A] to-[#141414]">
+                        {isTableView ? (
+                            <div className="p-6 bg-transparent">
+                                <TableView nodes={nodes} relationships={relationships} />
                             </div>
-                            <ResizePanelDetails open={!isTableView}>
-                                {selectedItem !== undefined ? (
-                                    <GraphPropertiesPanel
-                                        inspectedItem={selectedItem as BasicNode | BasicRelationship}
-                                        newScheme={newScheme}
-                                    />
-                                ) : (
-                                    <ResultOverview
-                                        nodes={nodes}
-                                        relationships={relationships}
-                                        newScheme={newScheme}
-                                        searchQuery={searchQuery}
-                                        setSearchQuery={setSearchQuery}
-                                        setNodes={setNodes}
-                                        setRelationships={setRelationships}
-                                    />
-                                )}
-                            </ResizePanelDetails>
-                        </div>
-                    </>
-                )}
-            </div>
-        </>
+                        ) : (
+                            <div className="h-full">
+                                <InteractiveNvlWrapper
+                                    nodes={nodes}
+                                    rels={relationships}
+                                    nvlOptions={{
+                                        ...nvlOptions,
+                                    }}
+                                    ref={nvlRef}
+                                    mouseEventCallbacks={mouseEventCallbacks}
+                                    interactionOptions={{
+                                        selectOnClick: true,
+                                    }}
+                                    nvlCallbacks={nvlCallbacks}
+                                />
+
+                                {/* Floating controls */}
+                                <div className="absolute bottom-6 right-6 flex flex-col gap-2">
+                                    {viewPoint !== 'chatInfoView' && (
+                                        <button
+                                            onClick={handleRefresh}
+                                            disabled={disableRefresh}
+                                            className="p-2 bg-[#141414] hover:bg-[#262626] rounded-full border border-[#262626] transition-all group disabled:opacity-50"
+                                        >
+                                            <RotateCw className="w-5 h-5 text-gray-400 group-hover:text-white" />
+                                        </button>
+                                    )}
+                                    <button
+                                        onClick={handleZoomIn}
+                                        className="p-2 bg-[#141414] hover:bg-[#262626] rounded-full border border-[#262626] transition-all group"
+                                    >
+                                        <ZoomIn className="w-5 h-5 text-gray-400 group-hover:text-white" />
+                                    </button>
+                                    <button
+                                        onClick={handleZoomOut}
+                                        className="p-2 bg-[#141414] hover:bg-[#262626] rounded-full border border-[#262626] transition-all group"
+                                    >
+                                        <ZoomOut className="w-5 h-5 text-gray-400 group-hover:text-white" />
+                                    </button>
+                                    <button
+                                        onClick={handleZoomToFit}
+                                        className="p-2 bg-[#141414] hover:bg-[#262626] rounded-full border border-[#262626] transition-all group"
+                                    >
+                                        <Maximize2 className="w-5 h-5 text-gray-400 group-hover:text-white" />
+                                    </button>
+                                </div>
+                            </div>
+                        )}
+
+                        {/* Side panel */}
+                        {!isTableView ? (
+                            <div className="w-[400px] absolute right-0 top-0 h-full bg-[#141414] bg-opacity-45 backdrop-blur-lg  border-l border-[#262626]">
+                                <div className="5-4 text-gray-200">
+                                    {selectedItem !== undefined ? (
+                                        <GraphPropertiesPanel
+                                            inspectedItem={selectedItem as BasicNode | BasicRelationship}
+                                            newScheme={newScheme}
+                                        />
+                                    ) : (
+                                        <ResultOverview
+                                            nodes={nodes}
+                                            relationships={relationships}
+                                            newScheme={newScheme}
+                                            searchQuery={searchQuery}
+                                            setSearchQuery={setSearchQuery}
+                                            setNodes={setNodes}
+                                            setRelationships={setRelationships}
+                                        />
+                                    )}
+                                </div>
+                            </div>
+                        ) : null}
+                    </div>
+                </div>
+            )}
+        </div>
     );
 };
 

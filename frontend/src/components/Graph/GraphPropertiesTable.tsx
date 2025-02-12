@@ -5,14 +5,14 @@ const GraphPropertiesTable = ({ propertiesWithTypes }: GraphPropertiesTableProps
   return (
     <div className='flex w-full flex-col break-all px-4 text-sm' data-testid='viz-details-pane-properties-table'>
       <div className='mb-1 flex flex-row pl-2'>
-        <Typography variant='body-medium' className='basis-1/3'>
+        <Typography variant='body-medium' className='basis-1/3 text-[#ffffff]'>
           Key
         </Typography>
         <Typography variant='body-medium'>Value</Typography>
       </div>
       {propertiesWithTypes.map(({ key, value }, _) => {
         return (
-          <div key={key} className='border-palette-neutral-border-weak flex border-t py-1 pl-2 first:border-none'>
+          <div key={key} className='flex py-1 pl-2 first:border-none text-[#fffff]'>
             <div className='shrink basis-1/3 overflow-hidden whitespace-nowrap'>
               <GraphLabel
                 type='propertyKey'
@@ -24,7 +24,7 @@ const GraphPropertiesTable = ({ propertiesWithTypes }: GraphPropertiesTableProps
                 {key}
               </GraphLabel>
             </div>
-            <div className={`ml-2 flex-1 whitespace-pre-wrap`}>{value}</div>
+            <div className={`text-[#ffffff] ml-2 flex-1 whitespace-pre-wrap`}>{value}</div>
           </div>
         );
       })}

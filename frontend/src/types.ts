@@ -266,7 +266,7 @@ export interface GraphViewModalProps {
   selectedRows?: string[] | undefined;
 }
 
-export type GraphType = 'Entities' | 'DocumentChunk' | 'Communities';
+export type GraphType = 'Entities' | 'DocumentChunk' | 'Tables';
 
 export type PartialLabelNode = Partial<Node> & {
   labels: string;

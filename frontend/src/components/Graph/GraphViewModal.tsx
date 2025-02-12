@@ -20,16 +20,15 @@ import {
     MagnifyingGlassPlusIconOutline,
 } from '@neo4j-ndl/react/icons';
 import { IconButtonWithToolTip } from '../UI/IconButtonToolTip';
-import { filterData, getCheckboxConditions, graphTypeFromNodes, processGraphData } from '../../utils/Utils';
+import { filterData, graphTypeFromNodes, processGraphData } from '../../utils/Utils';
 import { useCredentials } from '../../context/UserCredentials';
-
 import { graphQueryAPI } from '../../services/GraphQuery';
 import { graphLabels, nvlOptions, queryMap } from '../../utils/Constants';
-import CheckboxSelection from './CheckboxSelection';
-
 import ResultOverview from './ResultOverview';
 import { ResizePanelDetails } from './ResizePanel';
 import GraphPropertiesPanel from './GraphPropertiesPanel';
+import TableView from './TabelViw';
+import { TabsList, TabsTrigger, Tabs } from '../ui/tabs';
 
 const GraphViewModal: React.FunctionComponent<GraphViewModalProps> = ({
     open,
@@ -56,15 +55,10 @@ const GraphViewModal: React.FunctionComponent<GraphViewModalProps> = ({
     const [disableRefresh, setDisableRefresh] = useState<boolean>(false);
     const [selected, setSelected] = useState<{ type: EntityType; id: string } | undefined>(undefined);
     const [mode, setMode] = useState<boolean>(false);
+    const [isTableView, setIsTableView] = useState(false);
+    const [_, setActiveTab] = useState<GraphType>('DocumentChunk'); // Default tab
 
-    const graphQuery: string =
-        graphType.includes('DocumentChunk') && graphType.includes('Entities')
-            ? queryMap.DocChunkEntities
-            : graphType.includes('DocumentChunk')
-                ? queryMap.DocChunks
-                : graphType.includes('Entities')
-                    ? queryMap.Entities
-                    : '';
+    const graphQuery: string = queryMap.Entities
 
     // fit graph to original position
     const handleZoomToFit = () => {
@@ -73,6 +67,7 @@ const GraphViewModal: React.FunctionComponent<GraphViewModalProps> = ({
             {}
         );
     };
+
     // Unmounting the component
     useEffect(() => {
         const timeoutId = setTimeout(() => {
@@ -251,19 +246,15 @@ const GraphViewModal: React.FunctionComponent<GraphViewModalProps> = ({
 
     const checkBoxView = viewPoint !== graphLabels.chatInfoView;
 
-    // the checkbox selection
-    const handleCheckboxChange = (graph: GraphType) => {
-        const currentIndex = graphType.indexOf(graph);
-        const newGraphSelected = [...graphType];
-        if (currentIndex === -1) {
-            newGraphSelected.push(graph);
-        } else {
-            newGraphSelected.splice(currentIndex, 1);
-        }
-        initGraph(newGraphSelected, allNodes, allRelationships, scheme);
+    // the tab selection
+    const handleTabChange = (tab: GraphType) => {
+        setIsTableView(tab == "Tables")
+        setActiveTab(tab);
         setSearchQuery('');
-        setGraphType(newGraphSelected);
         setSelected(undefined);
+        if (tab == "Tables") return
+        initGraph([tab], allNodes, allRelationships, scheme);
+        setGraphType([tab]);
         if (nvlRef.current && nvlRef?.current?.getScale() > 1) {
             handleZoomToFit();
         }
@@ -309,7 +300,6 @@ const GraphViewModal: React.FunctionComponent<GraphViewModalProps> = ({
         onZoom: true,
         onDrag: true,
     };
-
     return (
         <>
             <div className='bg-white relative w-full h-full max-h-full'>
@@ -333,56 +323,66 @@ const GraphViewModal: React.FunctionComponent<GraphViewModalProps> = ({
                     <>
                         <div className='flex' style={{ height: '100%' }}>
                             <div className='bg-palette-neutral-bg-default relative' style={{ width: '100%', flex: '1' }}>
-                                <Flex className='p-5 w-full' alignItems='center' flexDirection='row'>
+                                <Flex className='p-5 w-full' alignItems='center' flexDirection='row' gap="4">
                                     {checkBoxView && (
-                                        <CheckboxSelection
-                                            graphType={graphType}
-                                            loading={loading}
-                                            handleChange={handleCheckboxChange}
-                                            {...getCheckboxConditions(allNodes)}
-                                        />
+                                        <>
+                                            <Tabs defaultValue="DocumentChunk" onValueChange={(value:any) => handleTabChange(value as GraphType)}>
+                                                <TabsList>
+                                                    <TabsTrigger value="DocumentChunk">Document Chunk</TabsTrigger>
+                                                    <TabsTrigger value="Entities">Entities</TabsTrigger>
+                                                    <TabsTrigger value="Tables">Tables</TabsTrigger>
+                                                </TabsList>
+                                            </Tabs>
+                                        </>
                                     )}
                                 </Flex>
-                                <InteractiveNvlWrapper
-                                    nodes={nodes}
-                                    rels={relationships}
-                                    nvlOptions={nvlOptions}
-                                    ref={nvlRef}
-                                    mouseEventCallbacks={{ ...mouseEventCallbacks }}
-                                    interactionOptions={{
-                                        selectOnClick: true,
-                                    }}
-                                    nvlCallbacks={nvlCallbacks}
-                                />
-                                <IconButtonArray orientation='vertical' isFloating={true} className='absolute bottom-4 right-4'>
-                                    {viewPoint !== 'chatInfoView' && (
-                                        <IconButtonWithToolTip
-                                            label='Refresh'
-                                            text='Refresh graph'
-                                            onClick={handleRefresh}
-                                            placement='left'
-                                            disabled={disableRefresh}
-                                        >
-                                            <ArrowPathIconOutline className='n-size-token-7' />
-                                        </IconButtonWithToolTip>
-                                    )}
-                                    <IconButtonWithToolTip label='Zoomin' text='Zoom in' onClick={handleZoomIn} placement='left'>
-                                        <MagnifyingGlassPlusIconOutline className='n-size-token-7' />
-                                    </IconButtonWithToolTip>
-                                    <IconButtonWithToolTip label='Zoom out' text='Zoom out' onClick={handleZoomOut} placement='left'>
-                                        <MagnifyingGlassMinusIconOutline className='n-size-token-7' />
-                                    </IconButtonWithToolTip>
-                                    <IconButtonWithToolTip
-                                        label='Zoom to fit'
-                                        text='Zoom to fit'
-                                        onClick={handleZoomToFit}
-                                        placement='left'
-                                    >
-                                        <FitToScreenIcon className='n-size-token-7' />
-                                    </IconButtonWithToolTip>
-                                </IconButtonArray>
+
+                                {isTableView ? (
+                                    <TableView nodes={nodes} relationships={relationships} />
+                                ) : (
+                                    <>
+                                        <InteractiveNvlWrapper
+                                            nodes={nodes}
+                                            rels={relationships}
+                                            nvlOptions={nvlOptions}
+                                            ref={nvlRef}
+                                            mouseEventCallbacks={{ ...mouseEventCallbacks }}
+                                            interactionOptions={{
+                                                selectOnClick: true,
+                                            }}
+                                            nvlCallbacks={nvlCallbacks}
+                                        />
+                                        <IconButtonArray orientation='vertical' isFloating={true} className='absolute bottom-4 right-4'>
+                                            {viewPoint !== 'chatInfoView' && (
+                                                <IconButtonWithToolTip
+                                                    label='Refresh'
+                                                    text='Refresh graph'
+                                                    onClick={handleRefresh}
+                                                    placement='left'
+                                                    disabled={disableRefresh}
+                                                >
+                                                    <ArrowPathIconOutline className='n-size-token-7' />
+                                                </IconButtonWithToolTip>
+                                            )}
+                                            <IconButtonWithToolTip label='Zoomin' text='Zoom in' onClick={handleZoomIn} placement='left'>
+                                                <MagnifyingGlassPlusIconOutline className='n-size-token-7' />
+                                            </IconButtonWithToolTip>
+                                            <IconButtonWithToolTip label='Zoom out' text='Zoom out' onClick={handleZoomOut} placement='left'>
+                                                <MagnifyingGlassMinusIconOutline className='n-size-token-7' />
+                                            </IconButtonWithToolTip>
+                                            <IconButtonWithToolTip
+                                                label='Zoom to fit'
+                                                text='Zoom to fit'
+                                                onClick={handleZoomToFit}
+                                                placement='left'
+                                            >
+                                                <FitToScreenIcon className='n-size-token-7' />
+                                            </IconButtonWithToolTip>
+                                        </IconButtonArray>
+                                    </>
+                                )}
                             </div>
-                            <ResizePanelDetails open={true}>
+                            <ResizePanelDetails open={!isTableView}>
                                 {selectedItem !== undefined ? (
                                     <GraphPropertiesPanel
                                         inspectedItem={selectedItem as BasicNode | BasicRelationship}
@@ -407,4 +407,5 @@ const GraphViewModal: React.FunctionComponent<GraphViewModalProps> = ({
         </>
     );
 };
+
 export default GraphViewModal;

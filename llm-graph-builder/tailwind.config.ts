@@ -1,17 +1,14 @@
-/** @type {import('tailwindcss').Config} */
+import type { Config } from "tailwindcss";
+
 export default {
     darkMode: ["class"],
     content: [
-    "./index.html",
-    "./src/**/*.{js,ts,jsx,tsx}",
+    "./pages/**/*.{js,ts,jsx,tsx,mdx}",
+    "./components/**/*.{js,ts,jsx,tsx,mdx}",
+    "./app/**/*.{js,ts,jsx,tsx,mdx}",
   ],
   theme: {
   	extend: {
-  		borderRadius: {
-  			lg: 'var(--radius)',
-  			md: 'calc(var(--radius) - 2px)',
-  			sm: 'calc(var(--radius) - 4px)'
-  		},
   		colors: {
   			background: 'hsl(var(--background))',
   			foreground: 'hsl(var(--foreground))',
@@ -53,14 +50,13 @@ export default {
   				'4': 'hsl(var(--chart-4))',
   				'5': 'hsl(var(--chart-5))'
   			}
+  		},
+  		borderRadius: {
+  			lg: 'var(--radius)',
+  			md: 'calc(var(--radius) - 2px)',
+  			sm: 'calc(var(--radius) - 4px)'
   		}
   	}
   },
   plugins: [require("tailwindcss-animate")],
-  presets:[require('@neo4j-ndl/base').tailwindConfig],
-  corePlugins: {
-    preflight: false,
-  },
-  prefix:""
-}
-
+} satisfies Config;

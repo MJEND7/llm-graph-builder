@@ -651,11 +651,13 @@ def QA_RAG(graph,model, question, document_names, session_id, mode, write_access
     user_question = HumanMessage(content=question)
     messages.append(user_question)
 
+    
     if mode == CHAT_GRAPH_MODE:
         result = process_graph_response(model, graph, question, messages, history)
     else:
         chat_mode_settings = get_chat_mode_settings(mode=mode)
         document_names= list(map(str.strip, json.loads(document_names)))
+        print(chat_mode_settings["document_filter"])
         if document_names and not chat_mode_settings["document_filter"]:
             result =  {
                 "session_id": "",  

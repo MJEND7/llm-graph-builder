@@ -419,15 +419,13 @@ const GraphViewModal: React.FC<GraphViewModalProps> = ({
                         )}
 
                         {/* Side panel */}
-                        {!isTableView ? (
+                        {!isTableView && selectedItem !== undefined ? (
                             <div className="w-[300px] absolute right-0 top-0 h-full bg-[#141414] bg-opacity-45 backdrop-blur-lg  border-l border-[#262626]">
                                 <div className="5-4 text-gray-200">
-                                    {selectedItem !== undefined && (
-                                        <GraphPropertiesPanel
-                                            inspectedItem={selectedItem as BasicNode | BasicRelationship}
-                                            newScheme={newScheme}
-                                        />
-                                    )}
+                                    <GraphPropertiesPanel
+                                        inspectedItem={selectedItem as BasicNode | BasicRelationship}
+                                        newScheme={newScheme}
+                                    />
                                 </div>
                             </div>
                         ) : null}

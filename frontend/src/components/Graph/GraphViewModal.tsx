@@ -23,7 +23,6 @@ import {
 import { filterData, graphTypeFromNodes, processGraphData } from '../../utils/Utils';
 import { graphQueryAPI } from '../../services/GraphQuery';
 import { graphLabels, nvlOptions, queryMap } from '../../utils/Constants';
-import ResultOverview from './ResultOverview';
 import GraphPropertiesPanel from './GraphPropertiesPanel';
 import TableView from './TabelViw';
 
@@ -421,22 +420,12 @@ const GraphViewModal: React.FC<GraphViewModalProps> = ({
 
                         {/* Side panel */}
                         {!isTableView ? (
-                            <div className="w-[400px] absolute right-0 top-0 h-full bg-[#141414] bg-opacity-45 backdrop-blur-lg  border-l border-[#262626]">
+                            <div className="w-[300px] absolute right-0 top-0 h-full bg-[#141414] bg-opacity-45 backdrop-blur-lg  border-l border-[#262626]">
                                 <div className="5-4 text-gray-200">
-                                    {selectedItem !== undefined ? (
+                                    {selectedItem !== undefined && (
                                         <GraphPropertiesPanel
                                             inspectedItem={selectedItem as BasicNode | BasicRelationship}
                                             newScheme={newScheme}
-                                        />
-                                    ) : (
-                                        <ResultOverview
-                                            nodes={nodes}
-                                            relationships={relationships}
-                                            newScheme={newScheme}
-                                            searchQuery={searchQuery}
-                                            setSearchQuery={setSearchQuery}
-                                            setNodes={setNodes}
-                                            setRelationships={setRelationships}
                                         />
                                     )}
                                 </div>
